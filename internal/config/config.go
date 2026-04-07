@@ -33,7 +33,6 @@ func write(config *Config) error {
 	}
 
 	err = os.WriteFile(configFilePath, fileData, 0644)
-
 	return nil
 }
 
