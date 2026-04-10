@@ -78,3 +78,29 @@ func handlerRegister(s *state, cmd command) error {
 	return nil
 }
 
+func handlerReset(s *state, _ command) error {
+	err := s.db.ClearUsers(context.Background())
+	if err != nil {
+		return fmt.Errorf("Failed to clear users: %w", err)
+	}
+
+	fmt.Println("User table cleared.")
+	return nil
+}
+
+func handlerGetUsers(s *state, _ command) error {
+	users, err := s.db.GetUsers(context.Background())
+	if err != nil {
+		return fmt.Errorf("Failed to get users: %w", err)
+	}
+
+	for _, user := range users {
+		if user.Name == s.config.CurrentUserName {
+			fmt.Printf("* %s (current)\n", user.Name)
+		} else {
+			fmt.Printf("* %s\n", user.Name)
+		}
+	}
+	return nil
+}
+
