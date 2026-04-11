@@ -18,4 +18,4 @@ SELECT *
 FROM users;
 
 -- name: ClearUsers :exec
-TRUNCATE TABLE users;
+DELETE FROM users;

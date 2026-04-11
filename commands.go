@@ -104,3 +104,52 @@ func handlerGetUsers(s *state, _ command) error {
 	return nil
 }
 
+func handlerAgg(_ *state, _ command) error {
+	rss_feed, err := fetchFeed(context.Background(), "https://www.wagslane.dev/index.xml")
+	if err != nil {
+		return fmt.Errorf("Failed to get RSS Feed: %w", err)
+	}
+
+	for _, item := range rss_feed.Channel.Item {
+		fmt.Printf("Title: %s\n", item.Title)
+		fmt.Printf("Link: %s\n", item.Link)
+		fmt.Printf("Desc: %s\n", item.Description)
+		fmt.Printf("Date: %s\n", item.PubDate)
+	}
+
+	return nil
+}
+
+func handlerAddFeed(s *state, cmd command) error {
+	if len(cmd.args) != 2 {
+		return fmt.Errorf("Add feed requires a name and url")
+	}
+
+	user, err := s.db.GetUser(context.Background(), s.config.CurrentUserName)
+	if err != nil {
+		return fmt.Errorf("Was not able to get user: %w", err)
+	}
+
+	createFeedParams := database.CreateFeedParams{
+		ID:        uuid.New(),
+		Name:      cmd.args[0],
+		Url:       cmd.args[1],
+		UserID:    user.ID,
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+	}
+
+	feed, err := s.db.CreateFeed(context.Background(), createFeedParams)
+	if err != nil {
+		return fmt.Errorf("Failed to add feed: %w", err)
+	}
+
+	fmt.Println("Feed Added:")
+	fmt.Printf("* ID: %v\n", feed.ID)
+	fmt.Printf("* Name: %v\n", feed.Name)
+	fmt.Printf("* Url: %v\n", feed.Url)
+	fmt.Printf("* UserID: %v\n", feed.UserID)
+	fmt.Printf("* CreatedAt: %v\n", feed.CreatedAt)
+	fmt.Printf("* UpdatedAt: %v\n", feed.UpdatedAt)
+	return nil
+}
