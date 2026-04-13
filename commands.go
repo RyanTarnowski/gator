@@ -135,11 +135,6 @@ func handlerAddFeed(s *state, cmd command, user database.User) error {
 		return fmt.Errorf("Add feed requires a name and url")
 	}
 
-	//user, err := s.db.GetUser(context.Background(), s.config.CurrentUserName)
-	//if err != nil {
-	//	return fmt.Errorf("Was not able to get user: %w", err)
-	//}
-
 	createFeedParams := database.CreateFeedParams{
 		ID:        uuid.New(),
 		Name:      cmd.args[0],
@@ -212,11 +207,6 @@ func handlerFollow(s *state, cmd command, user database.User) error {
 		return fmt.Errorf("Folloing a feed requires a url")
 	}
 
-	//user, err := s.db.GetUser(context.Background(), s.config.CurrentUserName)
-	//if err != nil {
-	//	return fmt.Errorf("Was not able to get user: %w", err)
-	//}
-
 	feed, err := s.db.GetFeed(context.Background(), cmd.args[0])
 	if err != nil {
 		return fmt.Errorf("Was not able to get url: %w", err)
@@ -242,11 +232,6 @@ func handlerFollow(s *state, cmd command, user database.User) error {
 }
 
 func handlerFollowing(s *state, cmd command, user database.User) error {
-	//user, err := s.db.GetUser(context.Background(), s.config.CurrentUserName)
-	//if err != nil {
-	//	return fmt.Errorf("Was not able to get user: %w", err)
-	//}
-
 	feed_follows, err := s.db.GetFeedFollowsForUser(context.Background(), user.ID)
 	if err != nil {
 		return fmt.Errorf("Failed get followed feeds: %w", err)
