@@ -204,7 +204,7 @@ func handlerFeeds(s *state, _ command) error {
 
 func handlerFollow(s *state, cmd command, user database.User) error {
 	if len(cmd.args) != 1 {
-		return fmt.Errorf("Folloing a feed requires a url")
+		return fmt.Errorf("Following a feed requires a url")
 	}
 
 	feed, err := s.db.GetFeed(context.Background(), cmd.args[0])
@@ -249,5 +249,29 @@ func handlerFollowing(s *state, cmd command, user database.User) error {
 		fmt.Printf("User Name: %s\n", feed.UserName)
 	}
 
+	return nil
+}
+
+func handlerUnfollow(s *state, cmd command, user database.User) error {
+	if len(cmd.args) != 1 {
+		return fmt.Errorf("Folloing a feed requires a url")
+	}
+
+	feed, err := s.db.GetFeed(context.Background(), cmd.args[0])
+	if err != nil {
+		return fmt.Errorf("Was not able to get url: %w", err)
+	}
+
+	removeFeedFollowParams := database.RemoveFeedFollowParams{
+		UserID: user.ID,
+		FeedID: feed.ID,
+	}
+
+	err = s.db.RemoveFeedFollow(context.Background(), removeFeedFollowParams)
+	if err != nil {
+		return fmt.Errorf("Error removing feed follow: %w", err)
+	}
+
+	fmt.Println("Feed follow removed.")
 	return nil
 }
