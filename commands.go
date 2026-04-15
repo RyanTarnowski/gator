@@ -114,19 +114,49 @@ func handlerGetUsers(s *state, _ command) error {
 	return nil
 }
 
-func handlerAgg(_ *state, _ command) error {
-	rss_feed, err := fetchFeed(context.Background(), "https://www.wagslane.dev/index.xml")
+func handlerAgg(s *state, cmd command) error {
+	if len(cmd.args) != 1 {
+		return fmt.Errorf("Agg requires a time between reqs value")
+	}
+
+	timeBetweenRequests, err := time.ParseDuration(cmd.args[0])
 	if err != nil {
-		return fmt.Errorf("Failed to get RSS Feed: %w", err)
+		return fmt.Errorf("Failed to parse duration: %w", err)
 	}
 
-	for _, item := range rss_feed.Channel.Item {
-		fmt.Printf("Title: %s\n", item.Title)
-		fmt.Printf("Link: %s\n", item.Link)
-		fmt.Printf("Desc: %s\n", item.Description)
-		fmt.Printf("Date: %s\n", item.PubDate)
+	fmt.Printf("Collecting feeds every %s...", timeBetweenRequests)
+	ticker := time.NewTicker(timeBetweenRequests)
+	for ; ; <-ticker.C {
+		scrapeFeeds(s, cmd)
+	}
+}
+
+func scrapeFeeds(s *state, _ command) error {
+	nextFeed, err := s.db.GetNextFeedToFetch(context.Background())
+	if err != nil {
+		return fmt.Errorf("Failed to get next feed: %w", err)
 	}
 
+	err = s.db.MarkFeedFetched(context.Background(), nextFeed.ID)
+	if err != nil {
+		return fmt.Errorf("Failed to mark feed as fetched: %w", err)
+	}
+
+	feed, err := fetchFeed(context.Background(), nextFeed.Url)
+	if err != nil {
+		return fmt.Errorf("Failed to fetch feed: %w", err)
+	}
+
+	fmt.Printf("Feed: %v\n", nextFeed.Name)
+	fmt.Println("----------------------------------------------------------------------------------------------------------")
+	for _, item := range feed.Channel.Item {
+		fmt.Printf(" * Title: %s\n", item.Title)
+		//fmt.Printf("Link: %s\n", item.Link)
+		//fmt.Printf("Desc: %s\n", item.Description)
+		//fmt.Printf("Date: %s\n", item.PubDate)
+	}
+	fmt.Println("----------------------------------------------------------------------------------------------------------")
+	fmt.Println()
 	return nil
 }
 
