@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"gator/internal/database"
 	"github.com/google/uuid"
+	"log"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -124,40 +127,62 @@ func handlerAgg(s *state, cmd command) error {
 		return fmt.Errorf("Failed to parse duration: %w", err)
 	}
 
-	fmt.Printf("Collecting feeds every %s...", timeBetweenRequests)
+	fmt.Printf("Collecting feeds every %s...\n", timeBetweenRequests)
 	ticker := time.NewTicker(timeBetweenRequests)
 	for ; ; <-ticker.C {
 		scrapeFeeds(s, cmd)
 	}
 }
 
-func scrapeFeeds(s *state, _ command) error {
+func scrapeFeeds(s *state, _ command) {
 	nextFeed, err := s.db.GetNextFeedToFetch(context.Background())
 	if err != nil {
-		return fmt.Errorf("Failed to get next feed: %w", err)
+		log.Printf("Failed to get next feed: %v", err)
+		return
 	}
 
 	err = s.db.MarkFeedFetched(context.Background(), nextFeed.ID)
 	if err != nil {
-		return fmt.Errorf("Failed to mark feed as fetched: %w", err)
+		log.Printf("Failed to mark feed as fetched: %v", err)
+		return
 	}
 
 	feed, err := fetchFeed(context.Background(), nextFeed.Url)
 	if err != nil {
-		return fmt.Errorf("Failed to fetch feed: %w", err)
+		log.Printf("Failed to fetch feed: %v", err)
+		return
 	}
 
-	fmt.Printf("Feed: %v\n", nextFeed.Name)
+	fmt.Printf("Feed: %v Post Count: %v\n", nextFeed.Name, len(feed.Channel.Item))
 	fmt.Println("----------------------------------------------------------------------------------------------------------")
 	for _, item := range feed.Channel.Item {
-		fmt.Printf(" * Title: %s\n", item.Title)
-		//fmt.Printf("Link: %s\n", item.Link)
-		//fmt.Printf("Desc: %s\n", item.Description)
-		//fmt.Printf("Date: %s\n", item.PubDate)
+
+		publishedAt, err := time.Parse(time.RFC1123, item.PubDate)
+		if err != nil {
+			log.Printf("Error converting publishedAt: %v", err)
+			return
+		}
+
+		createPostParams := database.CreatePostParams{
+			ID:          uuid.New(),
+			CreatedAt:   time.Now().UTC(),
+			UpdatedAt:   time.Now().UTC(),
+			Title:       item.Title,
+			Url:         item.Link,
+			Description: item.Description,
+			PublishedAt: publishedAt,
+			FeedID:      nextFeed.ID,
+		}
+
+		_, err = s.db.CreatePost(context.Background(), createPostParams)
+		if err != nil {
+			if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
+				continue
+			}
+			log.Printf("Error saving post: %v", err)
+			continue
+		}
 	}
-	fmt.Println("----------------------------------------------------------------------------------------------------------")
-	fmt.Println()
-	return nil
 }
 
 func handlerAddFeed(s *state, cmd command, user database.User) error {
@@ -303,5 +328,41 @@ func handlerUnfollow(s *state, cmd command, user database.User) error {
 	}
 
 	fmt.Println("Feed follow removed.")
+	return nil
+}
+
+func handlerBrowse(s *state, cmd command, user database.User) error {
+	limit := int32(2)
+
+	if len(cmd.args) == 1 {
+		i64, err := strconv.ParseInt(cmd.args[0], 10, 32)
+		if err != nil {
+			return fmt.Errorf("Error converting arg to int: %w", err)
+		}
+
+		limit = int32(i64)
+	}
+
+	getPostsForUserParams := database.GetPostsForUserParams{
+		UserID: user.ID,
+		Limit:  limit,
+	}
+
+	posts, err := s.db.GetPostsForUser(context.Background(), getPostsForUserParams)
+	if err != nil {
+		return fmt.Errorf("Error getting posts: %w", err)
+	}
+
+	for _, post := range posts {
+		fmt.Println("--------------------------------------------------------------------")
+		fmt.Printf("Feed: %s\n", post.FeedName)
+		fmt.Printf("Title: %s\n", post.Title)
+		fmt.Printf("URL: %s\n", post.Url)
+		fmt.Printf("Published At: %s\n", post.PublishedAt)
+		fmt.Printf("Description: %s\n", post.Description)
+		fmt.Println("--------------------------------------------------------------------")
+		fmt.Println()
+	}
+
 	return nil
 }
