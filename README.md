@@ -43,7 +43,7 @@ The goal of this project was to create a CLI RSS feed aggregator.
    ```
    
 ## How to Run
-1. From the root of the project, run the following command:
+1. From anywhere in the user space, run a Gator command:
    ```
    gator [Command] [Args]
    ```
