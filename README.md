@@ -8,6 +8,22 @@ The goal of this project was to create a CLI RSS feed aggregator.
 - Go
 - Postgres
 
+## Setup database
+1. Connect to Postgres with your preferred tool (I used psql)
+2. Create the gator database by running the following command:
+   ```
+   CREATE DATABASE gator;
+   ```
+3. Check that the creation worked by connecting to the database:
+   ```
+   \c gator
+   ```
+4. Set up database user password:
+   ```
+   ALTER USER postgres PASSWORD 'postgres';
+   ```
+   - *You can configure whatever username/password you prefer, just be sure to modify the "db_url" accordingly in the "Setup config file" step*
+
 ## Setup config file
 1. Create a new file called ".gatorconfig.json" at the root of your home directory
 2. The JSON file should be formatted like this:
@@ -17,7 +33,7 @@ The goal of this project was to create a CLI RSS feed aggregator.
      "current_user_name": ""
    }
    ```
-   - db_url: should contain your postgres database connection string
+   - db_url: should contain your Postgres database connection string
    - current_user_name: contains the current user logged into Gator, this can remain blank for now
 
 ## How to Install
@@ -52,4 +68,6 @@ The goal of this project was to create a CLI RSS feed aggregator.
 - following
   - Lists all the followed feeds for the current user   
 - unfollow
+  - Takes one argument, feed URL (needs to exist in Gator, use addfeed if not set up), and removes the follow data from the database
 - browse
+  - Takes one optional argument, the quantity of posts (default 2), and displays posts for the user's followed feed. The agg command needs to have been run at least once in order to get some posts to view.
